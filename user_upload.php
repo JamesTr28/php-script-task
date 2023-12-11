@@ -56,7 +56,7 @@ if (isset($options['help'])) {
 // Get Database credentials
 $host = isset($options['h']) ? $options['h'] : 'localhost';
 $username = isset($options['u']) ? $options['u'] : 'root';
-$password = isset($options['p']) ? $options['p'] : '';
+$password = isset($options['p']) ? $options['p'] : '1234';
 $database = 'test';
 
 // Check for --create_table option, here we will just create table only, no more action required.
@@ -79,18 +79,26 @@ $csvFilePath = $options['file'];
 
 // Open and read the CSV file
 if (($handle = fopen($csvFilePath, "r")) !== FALSE) {
-    
     // Create users table
     $conn = createUsersTable($host, $username, $password, $database);
 
     while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
-        $name = capitalize($data[0]);
-        $surname = capitalize($data[1]);
+        $name = $conn->real_escape_string(capitalize($data[0]));
+        $surname = $conn->real_escape_string(capitalize($data[1]));
         $email = filter_var(strtolower($data[2]), FILTER_SANITIZE_EMAIL);
     
         // Validate email address
         if (validateEmail($email)) {
             if (!$dryRun) {
+                $email = $conn->real_escape_string($email);
+                $sql = "INSERT INTO users (name, surname, email) VALUES ('$name', '$surname', '$email')";
+
+                try {
+                    $conn->query($sql);
+                }
+                catch (Exception $e) {
+                    echo "Error inserting " . $name . ' ' . $surname . ": " . $e->getMessage() . "\n";
+                }
             } else {
                 echo "Dry run: " . $name . ' ' . $surname . " is not inserted into the database.\n";
             }
@@ -98,6 +106,7 @@ if (($handle = fopen($csvFilePath, "r")) !== FALSE) {
             echo "Invalid email format: $email. Skipping record.\n";
         }
     }
+    echo "Finished";
     fclose($handle);
     
     // Close the database connection
