@@ -81,8 +81,9 @@ $csvFilePath = $options['file'];
 if (($handle = fopen($csvFilePath, "r")) !== FALSE) {
     // Create users table
     $conn = createUsersTable($host, $username, $password, $database);
-
+    $flag = true;
     while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
+        if ($flag) { $flag = false; continue;};
         $name = $conn->real_escape_string(capitalize($data[0]));
         $surname = $conn->real_escape_string(capitalize($data[1]));
         $email = filter_var(strtolower($data[2]), FILTER_SANITIZE_EMAIL);
