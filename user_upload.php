@@ -20,10 +20,22 @@ function createUsersTable($host, $username, $password, $database) {
 
     if ($conn->query($sql) === TRUE) {
         echo "Users table created successfully.\n";
+
+        return $conn;
     } else {
         echo "Error creating table: " . $conn->error . "\n";
         exit(1);
     }
+}
+
+// Capitalize the first letter of each word
+function capitalize($str) {
+    return ucwords(strtolower($str));
+}
+
+// Validate email address
+function validateEmail($email) {
+    return filter_var($email, FILTER_VALIDATE_EMAIL);
 }
 
 // Parse command line options
@@ -47,9 +59,52 @@ $username = isset($options['u']) ? $options['u'] : 'root';
 $password = isset($options['p']) ? $options['p'] : '';
 $database = 'test';
 
-// Check for --create_table option
+// Check for --create_table option, here we will just create table only, no more action required.
 if (isset($options['create_table'])) {
     createUsersTable($host, $username, $password, $database);
     exit(0);
 }
+
+// Start processing file
+if (!isset($options['file'])) {
+    echo "Error: Missing --file option. Use --help for usage information.\n";
+    exit(1);
+}
+
+// Check for --dry_run option
+$dryRun = isset($options['dry_run']);
+
+//Get file path
+$csvFilePath = $options['file'];
+
+// Open and read the CSV file
+if (($handle = fopen($csvFilePath, "r")) !== FALSE) {
+    
+    // Create users table
+    $conn = createUsersTable($host, $username, $password, $database);
+
+    while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
+        $name = capitalize($data[0]);
+        $surname = capitalize($data[1]);
+        $email = filter_var(strtolower($data[2]), FILTER_SANITIZE_EMAIL);
+    
+        // Validate email address
+        if (validateEmail($email)) {
+            if (!$dryRun) {
+            } else {
+                echo "Dry run: " . $name . ' ' . $surname . " is not inserted into the database.\n";
+            }
+        } else {
+            echo "Invalid email format: $email. Skipping record.\n";
+        }
+    }
+    fclose($handle);
+    
+    // Close the database connection
+    $conn->close();
+} else {
+    // Throw error if file not open.
+    echo "Error opening file: $csvFilePath\n";
+}
+
 ?>
